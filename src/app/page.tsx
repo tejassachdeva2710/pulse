@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { StatsRow } from '@/components/StatsRow'
 import { MonitorCard, MonitorItem } from '@/components/MonitorCard'
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [selectedMonitor, setSelectedMonitor] = useState<MonitorItem | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const hasInitialized = useRef(false)
 
   const fetchMonitors = useCallback(async () => {
     try {
@@ -43,33 +44,31 @@ export default function DashboardPage() {
     }
   }, [fetchMonitors])
 
-  // Initial load, check onboarding alert modal, and trigger initial ping
+  // Single, clean initialization on mount
   useEffect(() => {
-    let mounted = true
-    const init = async () => {
-      await fetchMonitors()
-      if (mounted) {
-        await triggerPing()
+    if (hasInitialized.current) return
+    hasInitialized.current = true
 
-        // Check if user has seen notification setup prompt
-        const configured = localStorage.getItem('pulse_alerts_configured')
-        if (!configured) {
-          setShowSettingsModal(true)
-        }
-      }
-    }
-    init()
+    fetchMonitors()
 
-    // 60-second polling interval
+    // 60-second background polling
     const intervalId = setInterval(() => {
-      triggerPing()
+      fetch('/api/ping', { method: 'POST' })
+        .then(() => fetchMonitors())
+        .catch(console.error)
     }, 60000)
 
     return () => {
-      mounted = false
       clearInterval(intervalId)
     }
-  }, [fetchMonitors, triggerPing])
+  }, [fetchMonitors])
+
+  const handleCloseSettingsModal = () => {
+    setShowSettingsModal(false)
+    try {
+      localStorage.setItem('pulse_alerts_configured', 'true')
+    } catch {}
+  }
 
   const handleAddMonitor = async (data: {
     name: string
@@ -104,7 +103,6 @@ export default function DashboardPage() {
     setSelectedMonitor(null)
   }
 
-  // Pre-seed popular services with 1 click if empty
   const handleSeedDefaults = async () => {
     const defaultServices = [
       { name: 'Google Search', url: 'https://www.google.com', interval: 60, method: 'GET' },
@@ -263,7 +261,7 @@ export default function DashboardPage() {
       {/* Notification Settings Modal (Email & Discord) */}
       <NotificationSettingsModal
         isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
+        onClose={handleCloseSettingsModal}
       />
 
       {/* Monitor Detail Panel */}

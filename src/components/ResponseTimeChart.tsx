@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   AreaChart,
   Area,
@@ -27,8 +27,13 @@ interface ResponseTimeChartProps {
 }
 
 export function ResponseTimeChart({ heartbeats, height = 280 }: ResponseTimeChartProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const chartData = useMemo(() => {
-    // Sort oldest to newest for chronological left-to-right display
     const sorted = [...heartbeats].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     )
@@ -52,6 +57,17 @@ export function ResponseTimeChart({ heartbeats, height = 280 }: ResponseTimeChar
     const sum = chartData.reduce((acc, curr) => acc + curr.responseTime, 0)
     return Math.round(sum / chartData.length)
   }, [chartData])
+
+  if (!mounted) {
+    return (
+      <div
+        className="flex w-full items-center justify-center rounded-xl border border-white/5 bg-[#12121a]/30 animate-pulse text-xs text-[#666680]"
+        style={{ height }}
+      >
+        Loading telemetry chart...
+      </div>
+    )
+  }
 
   if (chartData.length === 0) {
     return (
@@ -137,7 +153,7 @@ export function ResponseTimeChart({ heartbeats, height = 280 }: ResponseTimeChar
             stroke="#2979ff"
             strokeWidth={2}
             fill="url(#chartGradient)"
-            animationDuration={1000}
+            animationDuration={800}
           />
         </AreaChart>
       </ResponsiveContainer>

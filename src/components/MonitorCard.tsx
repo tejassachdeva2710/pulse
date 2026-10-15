@@ -1,10 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { StatusBadge } from './StatusBadge'
 import { UptimeBar, DayUptime } from './UptimeBar'
-import { AreaChart, Area, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area } from 'recharts'
 import { ExternalLink } from 'lucide-react'
 
 export interface MonitorItem {
@@ -35,21 +35,27 @@ interface MonitorCardProps {
 }
 
 export function MonitorCard({ monitor, index, onClick }: MonitorCardProps) {
-  const sparklineData = React.useMemo(() => {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const sparklineData = useMemo(() => {
     if (monitor.recentHeartbeats && monitor.recentHeartbeats.length > 0) {
       return monitor.recentHeartbeats.map((h, i) => ({
         index: i,
         val: h.responseTime || 10,
       }))
     }
-    // Default flat data if no checks yet
+    // Default baseline if no checks yet
     return [
-      { index: 0, val: monitor.lastResponseTime || 50 },
-      { index: 1, val: monitor.lastResponseTime || 50 },
+      { index: 0, val: monitor.lastResponseTime || 40 },
+      { index: 1, val: monitor.lastResponseTime || 40 },
     ]
   }, [monitor.recentHeartbeats, monitor.lastResponseTime])
 
-  const timeAgoText = React.useMemo(() => {
+  const timeAgoText = useMemo(() => {
     if (!monitor.lastChecked) return 'Never checked'
     const diffSeconds = Math.max(0, Math.floor((Date.now() - new Date(monitor.lastChecked).getTime()) / 1000))
     if (diffSeconds < 60) return `Checked ${diffSeconds}s ago`
@@ -61,11 +67,12 @@ export function MonitorCard({ monitor, index, onClick }: MonitorCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.4, ease: 'easeOut' }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.06, 0.3), ease: 'easeOut' }}
+      whileHover={{ y: -3 }}
       onClick={onClick}
-      className="glass-card group relative cursor-pointer overflow-hidden p-5 transition-all duration-300 hover:border-[#2979ff]/40 hover:shadow-[0_8px_30px_rgba(41,121,255,0.08)]"
+      className="glass-card group relative cursor-pointer overflow-hidden p-5 transition-colors duration-200 hover:border-[#2979ff]/40 hover:shadow-[0_8px_30px_rgba(41,121,255,0.08)]"
     >
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
@@ -99,10 +106,10 @@ export function MonitorCard({ monitor, index, onClick }: MonitorCardProps) {
           </span>
         </div>
 
-        {/* Mini sparkline chart */}
-        <div className="h-10 w-28 overflow-hidden rounded">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={sparklineData}>
+        {/* Mini sparkline chart - fixed dimensions for zero jitter */}
+        <div className="h-10 w-28 overflow-hidden rounded bg-[#0a0a0f]/40 flex items-center justify-center">
+          {mounted ? (
+            <AreaChart width={112} height={40} data={sparklineData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
               <defs>
                 <linearGradient id={`spark-${monitor.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2979ff" stopOpacity={0.45} />
@@ -118,7 +125,9 @@ export function MonitorCard({ monitor, index, onClick }: MonitorCardProps) {
                 isAnimationActive={false}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          ) : (
+            <div className="h-full w-full bg-white/[0.03] animate-pulse" />
+          )}
         </div>
       </div>
 

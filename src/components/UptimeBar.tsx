@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 
 export interface DayUptime {
   date: string
@@ -18,8 +18,8 @@ export function UptimeBar({ days = [] }: UptimeBarProps) {
     x: number
   } | null>(null)
 
-  // Ensure up to 90 bars (padded if fewer)
-  const displayDays: DayUptime[] = React.useMemo(() => {
+  // Ensure 90 bars (padded if fewer)
+  const displayDays: DayUptime[] = useMemo(() => {
     if (days.length >= 90) {
       return days.slice(-90)
     }
@@ -43,8 +43,10 @@ export function UptimeBar({ days = [] }: UptimeBarProps) {
       {/* Floating Tooltip */}
       {hoveredDay && (
         <div
-          className="pointer-events-none absolute -top-9 z-30 -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-[#12121a] px-2.5 py-1 text-[11px] font-medium text-white shadow-xl backdrop-blur-md"
-          style={{ left: `${hoveredDay.x}%` }}
+          className="pointer-events-none absolute -top-9 z-30 -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-[#12121a] px-2.5 py-1 text-[11px] font-medium text-white shadow-xl backdrop-blur-md transition-all duration-75"
+          style={{
+            left: `${Math.min(Math.max(hoveredDay.x, 8), 92)}%`,
+          }}
         >
           <span className="text-[#a0a0b8]">{hoveredDay.date}: </span>
           <span
@@ -64,7 +66,10 @@ export function UptimeBar({ days = [] }: UptimeBarProps) {
       )}
 
       {/* Bar container */}
-      <div className="flex h-7 w-full items-end gap-[1.5px] py-1">
+      <div
+        className="flex h-7 w-full items-end gap-[1.5px] py-1"
+        onMouseLeave={() => setHoveredDay(null)}
+      >
         {displayDays.map((d, index) => {
           const isFirst = index === 0
           const isLast = index === displayDays.length - 1
@@ -75,8 +80,7 @@ export function UptimeBar({ days = [] }: UptimeBarProps) {
             <div
               key={`${d.date}-${index}`}
               onMouseEnter={() => setHoveredDay({ date: d.date, uptime: d.uptime, x: pct })}
-              onMouseLeave={() => setHoveredDay(null)}
-              className="group relative h-full flex-1 cursor-pointer transition-all duration-150 hover:scale-y-125"
+              className="relative h-full flex-1 cursor-pointer opacity-90 transition-all duration-100 hover:opacity-100 hover:brightness-125"
               style={{
                 backgroundColor: barColor,
                 borderTopLeftRadius: isFirst ? '3px' : '1px',

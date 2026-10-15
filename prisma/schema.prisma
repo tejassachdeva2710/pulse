@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Monitor {
+  id             String      @id @default(cuid())
+  name           String
+  url            String
+  interval       Int         @default(60)
+  method         String      @default("GET")
+  status         String      @default("unknown")
+  previousStatus String?     @default("unknown")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  heartbeats     Heartbeat[]
+}
+
+model Heartbeat {
+  id           String   @id @default(cuid())
+  monitorId    String
+  monitor      Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status       String
+  responseTime Int
+  statusCode   Int?
+  message      String?
+  createdAt    DateTime @default(now())
+
+  @@index([monitorId, createdAt])
+}
+
+model NotificationSettings {
+  id             String   @id @default("default")
+  email          String?
+  smtpHost       String?
+  smtpPort       Int?     @default(587)
+  smtpUser       String?
+  smtpPass       String?
+  smtpSecure     Boolean  @default(false)
+  resendApiKey   String?
+  discordWebhook String?
+  notifyOnDown   Boolean  @default(true)
+  notifyOnUp     Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+}
